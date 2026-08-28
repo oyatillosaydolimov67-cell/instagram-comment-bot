@@ -6,7 +6,7 @@ app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'yuksak_secure_token_123';
 const INSTAGRAM_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY; 
+const GROQ_API_KEY = process.env.GROQ_API_KEY; 
 
 // Meta Webhook tekshiruvi
 app.get('/webhook', (req, res) => {
@@ -41,11 +41,11 @@ app.post('/webhook', async (req, res) => {
 
             console.log(`Yangi izoh keldi: "${userText}"`);
 
-            // DeepSeek API orqali javob generatsiya qilish
-            const dsResponse = await axios.post(
-              'https://api.deepseek.com/chat/completions',
+            // Groq API (LLaMA-3) orqali javob generatsiya qilish
+            const groqResponse = await axios.post(
+              'https://api.groq.com/openai/v1/chat/completions',
               {
-                model: 'deepseek-chat',
+                model: 'llama3-8b-8192',
                 messages: [
                   { 
                     role: 'system', 
@@ -59,14 +59,14 @@ app.post('/webhook', async (req, res) => {
               },
               {
                 headers: {
-                  'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+                  'Authorization': `Bearer ${GROQ_API_KEY}`,
                   'Content-Type': 'application/json'
                 }
               }
             );
 
-            const replyText = dsResponse.data.choices[0].message.content;
-            console.log(`DeepSeek javobi: "${replyText}"`);
+            const replyText = groqResponse.data.choices[0].message.content;
+            console.log(`Groq (LLaMA-3) javobi: "${replyText}"`);
 
             // Instagram izohiga javob qaytarish
             await axios.post(
@@ -75,7 +75,7 @@ app.post('/webhook', async (req, res) => {
               { params: { access_token: INSTAGRAM_TOKEN } }
             );
 
-            console.log(`Javob muvaffaqiyatli yuborildi!`);
+            console.log(`Javob muvaffaqiyatli yuborildi! 🎉`);
           }
         }
       }
