@@ -40,11 +40,11 @@ app.post('/webhook', async (req, res) => {
 
             console.log(`Yangi izoh keldi: "${userText}"`);
 
-            // Groq API (LLaMA-3.1) orqali javob generatsiya qilish
+            // Groq API (Mixtral 8x7B) orqali javob generatsiya qilish
             const groqResponse = await axios.post(
               'https://api.groq.com/openai/v1/chat/completions',
               {
-                model: 'llama-3.1-8b-instant',
+                model: 'mixtral-8x7b-32768',
                 messages: [
                   { 
                     role: 'system', 
