@@ -9,51 +9,66 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'yuksak_secure_token_123';
 const INSTAGRAM_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
 
-// Meta Webhook tekshiruvi
+// Meta Webhook tekshiruvi (GET)
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('Webhook muvaffaqiyatli tekshirildi!');
     return res.status(200).send(challenge);
   }
   res.sendStatus(403);
 });
 
-// Yangi izoh kelganda ishlovchi qism
+// Izohlarni qabul qilish va javob qaytarish (POST)
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200);
+  res.status(200).send('EVENT_RECEIVED');
 
   try {
-    const entry = req.body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const value = change?.value;
+    const body = req.body;
 
-    if (change?.field === 'comments' && value && value.from?.id !== entry?.id) {
-      const commentId = value.id;
-      const userText = value.text;
+    if (body.object === 'instagram') {
+      for (const entry of body.entry) {
+        for (const change of entry.changes) {
+          if (change.field === 'comments') {
+            const comment = change.value;
+            const commentId = comment.id;
+            const userText = comment.text;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: userText,
-        config: {
-          systemInstruction: "Siz 'Yuksak Travel' sayohat agentligining xushmuomala yordamchisisiz. Kommentlarga o'zbek tilida samimiy, qisqa (1 ta gap), duo va iliq so'zlar bilan javob yozing (masalan: 'Ilohim amin! 🤲', 'Alloh rozi boʻlsin! Ziyoratlar nasib qilsin ✨'). Agar narx yoki ma'lumot so'ralsa, 'Batafsil ma'lumot Direct orqali yuborildi 📩' deb qisqa javob qaytaring."
+            // Test xabari yoki bo'sh bo'lsa
+            if (!userText || !commentId) continue;
+
+            console.log(`Yangi izoh keldi: "${userText}"`);
+
+            // Gemini 2.5 Flash orqali javob generatsiya qilish
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: `Siz "Yuksak Travel" sayyohlik agentligining samimiy, do'stona va yordam beruvchi Instagram assistentisiz. Mijozning quyidagi izohiga qisqa, tushunarli, o'zbek tilida va emoji ishlatgan holda javob bering:\n\nMijoz izohi: "${userText}"`,
+            });
+
+            const replyText = response.text;
+            console.log(`Gemini javobi: "${replyText}"`);
+
+            // Instagram izohiga javob qaytarish
+            await axios.post(
+              `https://graph.facebook.com/v21.0/${commentId}/replies`,
+              { message: replyText },
+              { params: { access_token: INSTAGRAM_TOKEN } }
+            );
+
+            console.log(`Javob muvaffaqiyatli yuborildi!`);
+          }
         }
-      });
-
-      const replyText = response.text?.trim() || "Rahmat! Ziyoratlar nasib qilsin 🤲";
-
-      await axios.post(
-        `https://graph.facebook.com/v21.0/${commentId}/replies`,
-        { message: replyText },
-        { headers: { Authorization: `Bearer ${INSTAGRAM_TOKEN}` } }
-      );
+      }
     }
   } catch (error) {
-    console.error('Xatolik:', error?.response?.data || error.message);
+    console.error('Xatolik:', error.response?.data || error.message);
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server ${PORT}-portda ishga tushdi`));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Server ${PORT}-portda ishga tushdi`);
+});
