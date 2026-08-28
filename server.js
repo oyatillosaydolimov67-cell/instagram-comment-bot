@@ -23,7 +23,6 @@ app.get('/webhook', (req, res) => {
 
 // Izohlarni qabul qilish va javob qaytarish
 app.post('/webhook', async (req, res) => {
-  // Meta'ga darhol javob berish (Kutib qolmasligi uchun)
   res.status(200).send('EVENT_RECEIVED');
 
   try {
@@ -41,11 +40,11 @@ app.post('/webhook', async (req, res) => {
 
             console.log(`Yangi izoh keldi: "${userText}"`);
 
-            // Groq API (LLaMA-3) orqali javob generatsiya qilish
+            // Groq API (LLaMA-3.1) orqali javob generatsiya qilish
             const groqResponse = await axios.post(
               'https://api.groq.com/openai/v1/chat/completions',
               {
-                model: 'llama3-8b-8192',
+                model: 'llama-3.1-8b-instant',
                 messages: [
                   { 
                     role: 'system', 
@@ -66,7 +65,7 @@ app.post('/webhook', async (req, res) => {
             );
 
             const replyText = groqResponse.data.choices[0].message.content;
-            console.log(`Groq (LLaMA-3) javobi: "${replyText}"`);
+            console.log(`Groq javobi: "${replyText}"`);
 
             // Instagram izohiga javob qaytarish
             await axios.post(
