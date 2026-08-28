@@ -44,7 +44,7 @@ app.post('/webhook', async (req, res) => {
 
             // Gemini 2.5 Flash orqali javob generatsiya qilish
             const response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
+              model: 'gemini-1.5-flash',
               contents: `Siz "Yuksak Travel" sayyohlik agentligining samimiy, do'stona va yordam beruvchi Instagram assistentisiz. Mijozning quyidagi izohiga qisqa, tushunarli, o'zbek tilida va emoji ishlatgan holda javob bering:\n\nMijoz izohi: "${userText}"`,
             });
 
