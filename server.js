@@ -1,14 +1,16 @@
 import express from 'express';
 import axios from 'axios';
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 app.use(express.json());
 
+// Gemini API ulanishi
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'yuksak_secure_token_123';
 const INSTAGRAM_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-const GROQ_API_KEY = process.env.GROQ_API_KEY; 
 
-// Meta Webhook tekshiruvi
+// Meta Webhook tekshiruvi (GET)
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -21,8 +23,9 @@ app.get('/webhook', (req, res) => {
   res.sendStatus(403);
 });
 
-// Izohlarni qabul qilish va javob qaytarish
+// Izohlarni qabul qilish va javob qaytarish (POST)
 app.post('/webhook', async (req, res) => {
+  // Meta'ga darhol javob berish (Kutib qolmasligi uchun)
   res.status(200).send('EVENT_RECEIVED');
 
   try {
@@ -36,36 +39,19 @@ app.post('/webhook', async (req, res) => {
             const commentId = comment.id;
             const userText = comment.text;
 
+            // Bo'sh yoki xato qiymatlarni o'tkazib yuborish
             if (!userText || !commentId) continue;
 
             console.log(`Yangi izoh keldi: "${userText}"`);
 
-            // Groq API (GPT-OSS-20B) orqali javob generatsiya qilish
-            const groqResponse = await axios.post(
-              'https://api.groq.com/openai/v1/chat/completions',
-              {
-                model: 'openai/gpt-oss-20b',
-                messages: [
-                  { 
-                    role: 'system', 
-                    content: 'Siz "Yuksak Travel" sayyohlik agentligining samimiy, do\'stona va yordam beruvchi Instagram assistentisiz. Mijozning izohiga qisqa, tushunarli, o\'zbek tilida va emoji ishlatgan holda javob bering.' 
-                  },
-                  { 
-                    role: 'user', 
-                    content: userText 
-                  }
-                ]
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${GROQ_API_KEY}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
+            // Eng yangi va rasmiy model: Gemini 3.7 Flash
+            const response = await ai.models.generateContent({
+              model: 'gemini-3.7-flash',
+              contents: `Siz "Yuksak Travel" sayyohlik agentligining samimiy, do'stona va yordam beruvchi Instagram assistentisiz. Mijozning quyidagi izohiga qisqa, tushunarli, o'zbek tilida va emoji ishlatgan holda javob bering:\n\nMijoz izohi: "${userText}"`,
+            });
 
-            const replyText = groqResponse.data.choices[0].message.content;
-            console.log(`Groq javobi: "${replyText}"`);
+            const replyText = response.text;
+            console.log(`Gemini javobi: "${replyText}"`);
 
             // Instagram izohiga javob qaytarish
             await axios.post(
